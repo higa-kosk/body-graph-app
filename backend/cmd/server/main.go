@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -20,6 +21,14 @@ func main() {
 
 	r := gin.Default()
 
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:8081"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-VIP-Key"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
+
 	api := r.Group("/api/v1")
 	{
 		// パブリックグループ
@@ -32,7 +41,8 @@ func main() {
 		// セキュアグループ
 		secureGroup := api.Group("/")
 		secureGroup.Use(middleware.VIPKeyMiddleware())
-		secureGroup.Use(middleware.AuthMiddleware())
+		//secureGroup.Use(middleware.AuthMiddleware())
+		secureGroup.Use(TempAuthMiddleware()) // 本物のAuthMiddlewareの代わりにこれを挟む
 		{
 			secureGroup.POST("/records", handlers.CreateRecord)
 			secureGroup.GET("/records", handlers.GetRecords)
@@ -67,5 +77,13 @@ func loadEnv() {
 		log.Printf("Warning: Could not load %s file: %v. Falling back to system environment variables.", filename, err)
 	} else {
 		log.Printf("Loaded environment from %s", filename)
+	}
+}
+
+// テスト用に常に userID = 1をセットするだけの簡易ミドルウェア
+func TempAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("user_id", uint(1)) // 仮のユーザーIDをセット
+		c.Next()
 	}
 }
