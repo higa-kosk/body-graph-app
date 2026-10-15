@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native'
-// import { LineChart } from 'react-native-chart-kit'
+import { LineChart } from 'react-native-chart-kit'
 import { Dimensions } from 'react-native'
 import apiClient from '@/src/services/api'
 
@@ -10,6 +10,10 @@ export default function HomeScreen() {
 	const [bodyFat, setBodyFat] = useState('')
 	const [steps, setSteps] = useState('')
 	const heightCm = 170 // 仮のユーザー身長（cm）
+
+	// 画面幅に応じたグラフ幅の調整
+	const screenWidth = Dimensions.get('window').width
+	const chartWitdh = screenWidth > 600 ? 560 : screenWidth - 32
 
 	// 期間指定で記録データを取得する関数
 	const fetchRecords = async () => {
@@ -72,6 +76,34 @@ export default function HomeScreen() {
 	const heightM = heightCm / 100
 	const currentBMI = heightM > 0 && latestWeight > 0 ? (latestWeight / (heightM * heightM)).toFixed(1) : '-'
 
+	// react-native-chart-kit用のデータ構造
+	const chartData = {
+		labels: labels.length > 0 ? labels : ['データなし'],
+		datasets: [
+			{
+				data: weights.length > 0 ? weights : [0],
+				color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+				strokeWidth: 2,
+			},
+		],
+	}
+
+	const chartConfig = {
+		backgroundGradientFrom: '#ffffff',
+		backgroundGradientTo: '#ffffff',
+		decimalPlaces: 1,
+		color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+		labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+		style: {
+			borderRadius: 16,
+		},
+		propsForDots: {
+			r: '4',
+			strokeWidth: '2',
+			stroke: '#007aff',
+		},
+	}
+
 	return (
 		<ScrollView contentContainerStyle={styles.container}>
 			<Text style={styles.headerTitle}>ヘルスケアダッシュボード</Text>
@@ -84,7 +116,17 @@ export default function HomeScreen() {
 
 			{/* 折れ線グラフ */}
 			{records.length > 0 ? (
-				<Text style={{ textAlign: 'center', margin: 20, color: '#666' }}>[グラフエリア]</Text>
+				<View style={styles.chartContainer}>
+					<Text style={styles.chartTitle}>体重の推移（直近30日間）</Text>
+					<LineChart
+						data={chartData}
+						width={chartWitdh}
+						height={220}
+						chartConfig={chartConfig}
+						bezier
+						style={styles.chart}
+					/>
+				</View>
 			) : (
 				<Text style={styles.noDataText}>期間内の記録がありません</Text>
 			)}
@@ -129,6 +171,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
   summaryCard: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 16, elevation: 2 },
   summaryText: { fontSize: 16, fontWeight: '600', color: '#333' },
+  chartContainer: { backgroundColor: '#fff', padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 16, elevation: 2 },
+  chartTitle: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 8, alignSelf: 'flex-start' },
   chart: { marginVertical: 8, borderRadius: 16 },
   noDataText: { textAlign: 'center', color: '#666', marginVertical: 40 },
   formContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 12, marginTop: 16, elevation: 2 },
