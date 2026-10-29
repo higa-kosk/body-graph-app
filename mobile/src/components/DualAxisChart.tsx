@@ -90,6 +90,30 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 		<View style={styles.container}>
 			<Svg width={svgWidth} height={svgHeight}>
 
+				{/* 左上の軸タイトル：体重（kg） */}
+				<SvgText
+					x={paddingLeft}
+					y={paddingTop - 10}
+					fill='#ffd166'
+					fontSize='11'
+					fontWeight='bold'
+					textAnchor='start'
+				>
+					体重（kg）
+				</SvgText>
+				
+				{/* 右上の軸タイトル：体脂肪率（%） */}
+				<SvgText
+					x={paddingLeft + chartWidth}
+					y={paddingTop - 10}
+					fill='rgba(255, 255, 255, 0.8)'
+					fontSize='11'
+					fontWeight='bold'
+					textAnchor='end'
+				>
+					体脂肪率（%）
+				</SvgText>
+
 				{/* グリッド線 */}
 				{Array.from({ length: gridSteps + 1 }).map((_, i) => {
 					const ratio = i / gridSteps
@@ -113,7 +137,7 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 							/>
 
 							{/* 左軸ラベル */}
-							<SvgText x={paddingLeft - 6} y={y + 4} fontSize='10' fill='rgba(255, 255, 255, 0.7)' textAnchor='end' fontWeight='600'>
+							<SvgText x={paddingLeft - 6} y={y + 4} fontSize='10' fill='#ffd166' textAnchor='end' fontWeight='600'>
 								{weightVal.toFixed(1)}
 							</SvgText>
 
