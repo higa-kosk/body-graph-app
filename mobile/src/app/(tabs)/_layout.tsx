@@ -9,6 +9,13 @@ export default function TabLayout() {
 					title: 'ホーム',
 				}}
 			/>
+			<Tabs.Screen
+				name='history'
+				options={{
+					title: '履歴一覧',
+				}}
+			/>
 		</Tabs>
+		
 	)
 }

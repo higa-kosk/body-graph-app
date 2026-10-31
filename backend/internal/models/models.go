@@ -17,7 +17,9 @@ type User struct {
 }
 
 type Record struct {
-	gorm.Model
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 	UserID     uint      `gorm:"index;not null" json:"user_id"`
 	RecordedAt time.Time `gorm:"index;not null" json:"recorded_at"` // 記録日時（入力したその瞬間のスナップショット）
 	Weight     float64   `gorm:"not null" json:"weight"`            // 体重（kg）

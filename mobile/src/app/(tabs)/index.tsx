@@ -74,7 +74,7 @@ export default function HomeScreen() {
 	// グラフ用データの組み立て
 	const weights = records.map((r) => r.weight)
 	const avgWeight = weights.length > 0 ? (weights.reduce((a, b) => a + b, 0) / weights.length).toFixed(1) : '-'
-	const latestRecord =records.length > 0 ? records[records.length - 1] : { weight: 0, body_fat: 0 }
+	const latestRecord = records.length > 0 ? records[records.length - 1] : { weight: 0, body_fat: 0 }
 
 	return (
 
