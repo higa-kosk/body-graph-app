@@ -165,7 +165,10 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-	container: { padding: 16, backgroundColor: '#121214', flexGrow: 1 }, // モダンなディープダーク背景
+	container: {
+		flex: 1,
+		backgroundColor: '#0b132b',
+	},
 	appTitle: { fontSize: 32, fontWeight: '900', color: '#48cae4', textAlign: 'center', marginVertical: 16, letterSpacing: 1 },
 	dashboardContainer: { width: '100%', maxWidth: 600, alignSelf: 'center', paddingHorizontal: 16 },
 	card: {
