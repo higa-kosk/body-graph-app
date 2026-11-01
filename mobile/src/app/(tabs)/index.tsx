@@ -166,7 +166,9 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
 	container: {
-		flex: 1,
+		padding: 16,
+		paddingBottom: 0,
+		flexGrow: 1,
 		backgroundColor: '#0b132b',
 	},
 	appTitle: { fontSize: 32, fontWeight: '900', color: '#48cae4', textAlign: 'center', marginVertical: 16, letterSpacing: 1 },
@@ -195,6 +197,7 @@ const styles = StyleSheet.create({
 		borderRadius: 28, 
 		padding: 22, 
 		marginBottom: 30,
+		overflow: 'hidden',
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 4 },
 		shadowOpacity: 0.15,

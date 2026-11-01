@@ -108,15 +108,17 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
 	container: {
-		flex: 1,
+		padding: 16,
+		paddingBottom: 0,
+		flexGrow: 1,
 		backgroundColor: '#0b132b',
 	},
+	appTitle: { fontSize: 32, fontWeight: '900', color: '#48cae4', textAlign: 'center', marginVertical: 16, letterSpacing: 1 },
 	center: {
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-	appTitle: { fontSize: 32, fontWeight: '900', color: '#48cae4', textAlign: 'center', marginVertical: 16, letterSpacing: 1 },
 	title: {
 		fontSize: 22,
 		fontWeight: 'bold',
