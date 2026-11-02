@@ -2,13 +2,13 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type User struct {
-	gorm.Model
-	Email      string `gorm:"uniqueIndex;not null"`
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	Email      string    `gorm:"uniqueIndex;not null"`
 	Name       string
 	Provider   string  `gorm:"not null"` // "apple" or "google"
 	ProviderID string  `gorm:"uniqueIndex;not null"`

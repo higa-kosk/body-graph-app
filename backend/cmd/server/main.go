@@ -36,6 +36,8 @@ func main() {
 		publicGroup.Use(middleware.VIPKeyMiddleware())
 		{
 			publicGroup.POST("/auth/login", handlers.SocialLogin)
+			publicGroup.POST("/auth/register", handlers.RegisterUser)
+
 		}
 
 		// セキュアグループ

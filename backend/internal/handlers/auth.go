@@ -2,80 +2,97 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 
 	"body-graph/backend/internal/database"
-	"body-graph/backend/internal/middleware"
 	"body-graph/backend/internal/models"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 )
 
-type LoginInput struct {
-	Provider string `json:"provider" binding:"required"` // "apple"または"googole"
-	IDToken  string `json:"id_token" binding:"required"`
+// モック用の簡易JWT生成関数
+func generateMockToken(userID uint) string {
+	return "mock-jwt-token-for-user-id-"
 }
 
+// ソーシャルログインの存在確認・ログイン処理
 func SocialLogin(c *gin.Context) {
-	var input LoginInput
+	var input struct {
+		Provider   string `json:"provider" binding:"required"`    // "apple" or "google"
+		ProviderID string `json:"provider_id" binding:"required"` // プロバイダ固有のID
+		Email      string `json:"email"`
+		Name       string `json:"name"`
+	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var providerID, email string
-	var err error
-
-	ctx := context.Background()
-
-	// プロバイダ毎のIDトークン検証
-	switch input.Provider {
-	case "google":
-		providerID, email, err = verifyGoogleToken(ctx, input.IDToken)
-	case "apple":
-		providerID, email, err = verifyAppleToken(ctx, input.IDToken)
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported provider"})
-		return
-	}
-
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to verify token: " + err.Error()})
-		return
-	}
-
-	// ユーザーの検索、または新規作成（Upsert）
 	var user models.User
-	result := database.DB.Where("provider = ? AND provider_id = ?", input.Provider, providerID).First(&user)
-	if result.Error != nil {
-		// 新規登録
-		user = models.User{
-			Provider:   input.Provider,
-			ProviderID: providerID,
-			Email:      email,
-		}
-		if err := database.DB.Create(&user).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
-			return
-		}
-	}
+	// ProviderIDでユーザーを検索（モデル側でuniqueIndexになっている前提）
+	result := database.DB.Where("provider_id = ?", input.ProviderID).First(&user)
 
-	// ミドルウェア側で定義したGenerateTokenを利用してセッション用JWTを発行
-	tokenString, err := middleware.GenerateToken(user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+	if result.Error != nil {
+		// 【未登録の場合】：勝手に作らず、「確認が必要」であることをフロントに伝える
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "needs_registration",
+			"message": "User not found. Please confirm registration.",
+		})
 		return
 	}
 
+	// 【既存ユーザーの場合】：ログイン成功（JWTを返却）
+	token := generateMockToken(user.ID)
 	c.JSON(http.StatusOK, gin.H{
-		"token": tokenString,
-		"user": gin.H{
-			"id":     user.ID,
-			"email":  user.Email,
-			"height": user.Height,
-		},
+		"status": "logged_in",
+		"token":  token,
+	})
+}
+
+// 新規登録確認画面で「登録する」が押された時の処理
+func RegisterUser(c *gin.Context) {
+	var input struct {
+		Provider   string `json:"provider" binding:"required"`
+		ProviderID string `json:"provider_id" binding:"required"`
+		Email      string `json:"email" binding:"required"`
+		Name       string `json:"name"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		fmt.Printf("❌ Bind error details: %v\n", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 念の為重複チェック
+	var existingUser models.User
+	if database.DB.Where("provider_id = ?", input.ProviderID).First(&existingUser).Error == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user already exists"})
+		return
+	}
+
+	// 新規ユーザー作成（Userモデルの構造に準拠）
+	newUser := models.User{
+		Email:      input.Email,
+		Name:       input.Name,
+		Provider:   input.Provider,
+		ProviderID: input.ProviderID,
+	}
+
+	if err := database.DB.Create(&newUser).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		return
+	}
+
+	// 登録完了後にJWTを発行してログイン状態にする
+	token := generateMockToken(newUser.ID)
+	c.JSON(http.StatusCreated, gin.H{
+		"status": "registered_and_logged_in",
+		"token":  token,
 	})
 }
 
