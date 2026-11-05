@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native'
-import apiClient from '@/src/services/api'
-import DualAxisChart, { BodyCompositionPieChart } from '@/src/components/DualAxisChart'
+import apiClient from '@/services/api'
+import DualAxisChart, { BodyCompositionPieChart } from '@/components/DualAxisChart'
+import { AxiosError } from 'axios'
 
 export default function HomeScreen() {
 	const [records, setRecords] = useState<any[]>([])
@@ -24,11 +25,20 @@ export default function HomeScreen() {
 			const response = await apiClient.get(`/records?start_date=${startDate}&end_date=${endDate}`)
 			// 日付昇順にソートしておく
 			const sortedData = (response.data.data || []).sort(
-				(a: any, b:any) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
+				(a: any, b: any) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
 			)
 			setRecords(sortedData)
 
 		} catch (error) {
+			const aError = error as AxiosError
+
+			console.log('【Axios Request URL】:', `${aError.config?.baseURL || ''}${aError.config?.url || ''}`)
+			console.log('【Error Message】:', aError.message)
+
+			if (aError.response) {
+				console.log('【Server Status】:', aError.response.status)
+				console.log('【Server Data】:', aError.response.data)
+			}
 			console.error('Failed to fetch records', error)
 		}
 	}
@@ -92,11 +102,11 @@ export default function HomeScreen() {
 				{/* ピルシェイプの期間タブ */}
 				<View style={styles.periodTabs}>
 					{[
-						{ days: 7, label: '1週間'},
-						{ days: 30, label: '1ヶ月間'},
-						{ days: 90, label: '3ヶ月間'},
-						{ days: 180, label: '半年間'},
-						{ days: 365, label: '1年間'},
+						{ days: 7, label: '1週間' },
+						{ days: 30, label: '1ヶ月間' },
+						{ days: 90, label: '3ヶ月間' },
+						{ days: 180, label: '半年間' },
+						{ days: 365, label: '1年間' },
 					].map((tab) => (
 						<TouchableOpacity
 							key={tab.days}
@@ -121,7 +131,7 @@ export default function HomeScreen() {
 					<Text style={styles.cardTitle}>Body Composition</Text>
 					<Text style={styles.subText}>Today ▾</Text>
 				</View>
-				
+
 				<BodyCompositionPieChart weight={latestRecord.weight} bodyFatPercentage={latestRecord.body_fat} />
 
 			</View>
@@ -192,10 +202,10 @@ const styles = StyleSheet.create({
 	periodBtnActive: { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 2 },
 	periodBtnText: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' },
 	periodBtnTextActive: { color: '#03045e' },
-	formCard: { 
-		backgroundColor: '#ffffff', 
-		borderRadius: 28, 
-		padding: 22, 
+	formCard: {
+		backgroundColor: '#ffffff',
+		borderRadius: 28,
+		padding: 22,
 		marginBottom: 30,
 		overflow: 'hidden',
 		shadowColor: '#000',

@@ -6,6 +6,7 @@ import (
 	"body-graph/backend/internal/middleware"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -21,8 +22,15 @@ func main() {
 
 	r := gin.Default()
 
+	allowedIP := os.Getenv("IPAddress")
+
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8081"},
+		AllowOriginFunc: func(origin string) bool {
+			if allowedIP != "" && strings.Contains(origin, allowedIP) {
+				return true
+			}
+			return strings.Contains(origin, "localhost")
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-VIP-Key"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -31,6 +39,11 @@ func main() {
 
 	api := r.Group("/api/v1")
 	{
+		// 検証用
+		api.GET("/ping", func(c *gin.Context) {
+			c.JSON(200, gin.H{"message": "pong"})
+		})
+
 		// パブリックグループ
 		publicGroup := api.Group("/")
 		publicGroup.Use(middleware.VIPKeyMiddleware())

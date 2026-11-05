@@ -2,7 +2,7 @@ import axios from "axios"
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1'
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
 const VIP_KEY = process.env.EXPO_PUBLIC_VIP_KEY || ''
 
 const apiClient = axios.create({
@@ -23,6 +23,9 @@ apiClient.interceptors.request.use(
 			} else {
 				token = await SecureStore.getItemAsync('jwt_token')
 			}
+
+			console.log('【Interceptor Token】:', token ? `${token.substring(0, 10)}...` : 'NULL OR EMPTY');
+            console.log('【VIP Key】:', VIP_KEY ? 'Set' : 'EMPTY');
 
 			if (token) {
 				config.headers.Authorization = `Bearer ${token}`

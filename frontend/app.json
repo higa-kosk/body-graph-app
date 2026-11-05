@@ -1,14 +1,18 @@
 {
   "expo": {
-    "name": "body-graph",
-    "slug": "body-graph",
+    "name": "frontend",
+    "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "bodygraph",
+    "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bodygraph",
+      "infoPlist": {
+        "NSAllowArbitraryLoads": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +25,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -34,8 +38,7 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-secure-store",
-      "@react-native-google-signin/google-signin"
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

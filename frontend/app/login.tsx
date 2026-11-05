@@ -2,15 +2,9 @@ import React, { useState } from 'react'
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Modal, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as AppleAuthentication from 'expo-apple-authentication'
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
 import { useRouter } from 'expo-router'
-import apiClient from '../services/api'
-import { saveToken } from '../services/auth'
-
-
-GoogleSignin.configure({
-	webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-})
+import apiClient from '@/services/api'
+import { saveToken } from '@/services/auth'
 
 export default function LoginScreen() {
 	const router = useRouter()
