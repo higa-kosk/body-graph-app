@@ -25,11 +25,26 @@ func SocialLogin(c *gin.Context) {
 		ProviderID string `json:"provider_id" binding:"required"` // プロバイダ固有のID
 		Email      string `json:"email"`
 		Name       string `json:"name"`
+		IDToken    string `json:"id_token"` // フロントからid_tokenを受け取るフィールドを追加
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Googleログインの場合、バックエンドでIDトークンを検証する
+	if input.Provider == "google" && input.IDToken != "" {
+		sub, verifiedEmail, err := verifyGoogleToken(c.Request.Context(), input.IDToken)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid google id token"})
+			return
+		}
+		// 改ざんを防ぐ為、検証済みのsub（Googleのユーザー一意ID）とメールアドレスを使用
+		input.ProviderID = sub
+		if verifiedEmail != "" {
+			input.Email = verifiedEmail
+		}
 	}
 
 	var user models.User
@@ -60,6 +75,7 @@ func RegisterUser(c *gin.Context) {
 		ProviderID string `json:"provider_id" binding:"required"`
 		Email      string `json:"email" binding:"required"`
 		Name       string `json:"name"`
+		IDToken    string `json:"id_token"` // フロントからid_tokenを受け取るフィールドを追加
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {

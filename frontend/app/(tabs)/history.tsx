@@ -44,40 +44,18 @@ export default function HistoryScreen() {
 	}
 
 	return (
-		<ScrollView contentContainerStyle={styles.container}>
-					<Text style={styles.appTitle}>Body Graph</Text>
+		<View style={styles.container}>
+			<Text style={styles.appTitle}>Body Graph</Text>
 			<Text style={styles.title}>記録の履歴</Text>
-
-			{/* 履歴ページのデザインに合わせた期間選択タブ */}
-			<View style={styles.periodTabsContainer}>
-				<View style={styles.periodTabs}>
-					{[
-						{ days: 7, label: '1週間' },
-						{ days: 30, label: '1ヶ月間' },
-						{ days: 90, label: '3ヶ月間' },
-						{ days: 180, label: '半年間' },
-						{ days: 365, label: '1年間' },
-					].map((tab) => (
-						<TouchableOpacity
-							key={tab.days}
-							style={[styles.periodBtn, periodDays === tab.days && styles.periodBtnActive]}
-							onPress={() => setPeriodDays(tab.days)}
-						>
-							<Text style={[styles.periodBtnText, periodDays === tab.days && styles.periodBtnTextActive]}>
-								{tab.label}
-							</Text>
-						</TouchableOpacity>
-					))}
-				</View>
-			</View>
 
 			{loading ? (
 
 				<View style={styles.center}>
 					<ActivityIndicator size='large' color='#ffd166' />
 				</View>
-			
+
 			) : (
+
 
 				<FlatList
 					data={records}
@@ -100,9 +78,34 @@ export default function HistoryScreen() {
 					ListEmptyComponent={
 						<Text style={styles.emptyText}>該当期間の記録はありません</Text>
 					}
+					ListHeaderComponent={() => (
+						<View style={styles.periodTabsContainer}>
+							<View style={styles.periodTabs}>
+								{[
+									{ days: 7, label: '1週間' },
+									{ days: 30, label: '1ヶ月間' },
+									{ days: 90, label: '3ヶ月間' },
+									{ days: 180, label: '半年間' },
+									{ days: 365, label: '1年間' },
+								].map((tab) => (
+									<TouchableOpacity
+										key={tab.days}
+										style={[styles.periodBtn, periodDays === tab.days && styles.periodBtnActive]}
+										onPress={() => setPeriodDays(tab.days)}
+									>
+										<Text style={[styles.periodBtnText, periodDays === tab.days && styles.periodBtnTextActive]}>
+											{tab.label}
+										</Text>
+									</TouchableOpacity>
+								))}
+							</View>
+						</View>
+					)}
+					stickyHeaderIndices={[0]}
+					stickyHeaderHiddenOnScroll
 				/>
 			)}
-		</ScrollView>
+		</View>
 	)
 }
 
@@ -127,7 +130,9 @@ const styles = StyleSheet.create({
 		marginVertical: 16,
 	},
 	periodTabsContainer: {
+		backgroundColor: '#0b132b',
 		paddingHorizontal: 16,
+		paddingBottom: 8,
 		maxWidth: 700,
 		alignSelf: 'center',
 		width: '100%',

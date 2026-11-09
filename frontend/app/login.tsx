@@ -1,16 +1,74 @@
 import React, { useState } from 'react'
 import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Modal, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import * as AppleAuthentication from 'expo-apple-authentication'
 import { useRouter } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
+import * as Google from 'expo-auth-session/providers/google'
 import apiClient from '@/services/api'
 import { saveToken } from '@/services/auth'
+
+// WebBrowserセッションの完了をハンドリング
+WebBrowser.maybeCompleteAuthSession()
 
 export default function LoginScreen() {
 	const router = useRouter()
 	const [loading, setLoading] = useState(false)
 	const [modalVisible, setModalVisible] = useState(false)
 	const [pendingUserData, setPendingUserData] = useState<any>(null)
+
+	// Google認証フックの設定
+	// ※clientIdにはGoogle Cloud Consoleで作成したWeb用、または各プラットフォーム用のクライアントIDを指定する
+	const [request, response, promptAsync] = Google.useAuthRequest({
+		webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+		iosClientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID,
+		// androidClientId: ...,
+	})
+
+	// Googleログインボタンが押された時
+	const handleGoogleLoginPress = async () => {
+		try {
+			setLoading(true)
+			const result = await promptAsync()
+
+			if (result.type === 'success') {
+				// 認証成功時、レスポンスからidTokenまたは認証コードを取得
+				// ※expo-auth-sessionの設定によってはauthentication?.idTokenが取得できる
+				const idToken = result.authentication?.idToken
+
+				if (!idToken) {
+					throw new Error('ID Token not found from Google response')
+				}
+
+				// Googleのユーザー情報を取得するか、あるいはidTokenをそのままバックエンドへ投げる
+				// ここではバックエンド側でverifyGoogleTokenがidTokenを検証する設計とする
+				const googlePayload = {
+					provider: 'google',
+					provicer_id: '', // バックエンド側でidTokenから検証・抽出する為空で良い
+					email: '', // 同上
+					name: 'Googleユーザー',
+					id_token: idToken,
+				}
+
+				const apiResponse = await apiClient.post('/auth/login', googlePayload)
+				const data = apiResponse.data
+
+				if (data.success === 'needs_registration') {
+					setPendingUserData(googlePayload)
+					setModalVisible(true)
+				} else {
+					await saveToken(data.token)
+					router.replace('/(tabs)')
+				}
+			} else {
+				console.log('Google Sing-In canceled or dismissed')
+			}
+		} catch (error: any) {
+			console.error('Google Login error:', error)
+			Alert.alert('ログイン失敗', 'Googleログインに失敗しました。')
+		} finally {
+			setLoading(false)
+		}
+	}
 
 	// ログイン（存在確認）の実行
 	const handleSocialLoginMock = async (provider: 'apple' | 'google') => {
@@ -72,13 +130,13 @@ export default function LoginScreen() {
 				<Text style={styles.title}>Body Graph</Text>
 				<Text style={styles.subtitle}>日々の体重・体脂肪・歩数をシンプルに管理</Text>
 
-				{/* Googleログインボタン（モック） */}
+				{/* Googleログインボタン */}
 				<TouchableOpacity
-					style={styles.googleButton}
-					onPress={() => handleSocialLoginMock('google')}
-					disabled={loading}
+					style={[styles.googleButton, !request && styles.disabledButton]}
+					onPress={() => handleGoogleLoginPress()}
+					disabled={!request || loading}
 				>
-					<Text style={styles.buttonText}>Googleでログイン（モック）</Text>
+					<Text style={styles.buttonText}>Googleでログイン</Text>
 				</TouchableOpacity>
 				
 				{/* Appleログインボタン（モック） */}
@@ -140,7 +198,7 @@ const styles = StyleSheet.create({
 		flex: 1, 
 		justifyContent: 'center', 
 		alignItems: 'center', 
-		backgroundColor: '#0b132b', // アプリ共通のディープダーク背景
+		backgroundColor: '#0b132b',
 		padding: 20 
 	},
 	content: {
@@ -188,15 +246,18 @@ const styles = StyleSheet.create({
 		shadowRadius: 6,
 		elevation: 4,
 	},
-	buttonText: { 
-		color: '#fff', 
-		fontSize: 16, 
-		fontWeight: 'bold', 
-	},
 	appleButtonText: {
 		color: '#000000',
 		fontSize: 16,
 		fontWeight: 'bold',
+	},
+	disabledButton: {
+		opacity: 0.6,
+	},
+	buttonText: { 
+		color: '#fff', 
+		fontSize: 16, 
+		fontWeight: 'bold', 
 	},
 	loadingContainer: {
 		marginTop: 24,
