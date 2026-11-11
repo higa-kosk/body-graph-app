@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, Text, StyleSheet, Dimensions } from 'react-native'
 import Svg, { Path, Circle, Line, Text as SvgText, Rect, G } from 'react-native-svg'
 
@@ -17,6 +17,9 @@ interface DualAxisChartProps {
 }
 
 export default function DualAxisChart({ records, showWeight, showBodyFat, showSteps = true }: DualAxisChartProps) {
+
+	// 選択中のインデックスを管理
+	const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
 	const screenWidth = Dimensions.get('window').width
 	const svgWidth = screenWidth > 600 ? 520 : screenWidth - 64
@@ -69,7 +72,7 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 
 	// Y座標の計算関数（体脂肪率用：右軸）
 	const getYBodyFat = (val: number) => {
-		return paddingTop + chartHeight - ((val -minBodyFat) / bodyFatRange) * chartHeight
+		return paddingTop + chartHeight - ((val - minBodyFat) / bodyFatRange) * chartHeight
 	}
 
 	// 折れ線パス（d属性）を生成するヘルパー
@@ -85,10 +88,42 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 	const gridSteps = 3
 	const barWidth = Math.max(6, Math.min(18, (chartWidth / records.length) * 0.4))
 
+	// タップハンドラー（選択・解除）
+	const handleSelect = (index: number) => {
+		setSelectedIndex((prev) => (prev === index ? null : index))
+	}
+
+	// 選択中データのツールチップ用位置計算
+	const selectedRecord = selectedIndex !== null ? records[selectedIndex] : null
+	const selectedX = selectedIndex !== null ? getX(selectedIndex) : 0
+
+	// ツールチップが画面端からはみ出さない様にAnchorを調整
+	let tooltipAnchor: 'start' | 'middle' | 'end' = 'middle'
+	let tooltipX = selectedX
+	if (selectedIndex !== null) {
+		if (selectedIndex === 0) {
+			tooltipAnchor = 'start'
+			tooltipX = selectedX - 8
+		} else if (selectedIndex === records.length - 1) {
+			tooltipAnchor = 'end'
+			tooltipX = selectedX + 8
+		}
+	}
+
 	return (
 
 		<View style={styles.container}>
 			<Svg width={svgWidth} height={svgHeight}>
+
+				{/* 背景クリックで選択解除 */}
+				<Rect
+					x='0'
+					y={0}
+					width={svgWidth}
+					height={svgHeight}
+					fill='transparent'
+					onPress={() => setSelectedIndex(null)}
+				/>
 
 				{/* 左上の軸タイトル：体重（kg） */}
 				<SvgText
@@ -101,7 +136,7 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 				>
 					体重（kg）
 				</SvgText>
-				
+
 				{/* 右上の軸タイトル：体脂肪率（%） */}
 				<SvgText
 					x={paddingLeft + chartWidth}
@@ -126,14 +161,14 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 					return (
 						<React.Fragment key={i}>
 							{/*横のグリッド線 */}
-							<Line 
-								x1={paddingLeft} 
-								y1={y} 
-								x2={paddingLeft + chartWidth} 
-								y2={y} 
+							<Line
+								x1={paddingLeft}
+								y1={y}
+								x2={paddingLeft + chartWidth}
+								y2={y}
 								stroke='rgba(255, 255, 255, 0.15)'
 								strokeDasharray='4.4'
-								strokeWidth='1' 
+								strokeWidth='1'
 							/>
 
 							{/* 左軸ラベル */}
@@ -158,11 +193,24 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 					const d = new Date(r.recorded_at)
 					const label = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
 					return (
-							<SvgText key={i} x={x} y={svgHeight - 8} fontSize='10' fill='rgba(255, 255, 255, 0.7)' textAnchor='middle' fontWeight='600'>
-								{label}
-							</SvgText>
+						<SvgText key={i} x={x} y={svgHeight - 8} fontSize='10' fill='rgba(255, 255, 255, 0.7)' textAnchor='middle' fontWeight='600'>
+							{label}
+						</SvgText>
 					)
 				})}
+
+				{/* 選択戦の垂直ハイライトガイド */}
+				{selectedIndex !== null && (
+					<Line
+						x1={selectedX}
+						y1={paddingTop}
+						x2={selectedX}
+						y2={paddingTop + chartHeight}
+						stroke='rgba(76, 201, 240, 0.4)'
+						strokeWidth='1.5'
+						strokeDasharray='3,3'
+					/>
+				)}
 
 				{/* 歩数バー（背景） */}
 				{showSteps &&
@@ -181,8 +229,9 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 								y={barY}
 								width={barWidth}
 								height={barH}
-								fill='rgba(255, 255, 255, 0.2)'
+								fill={selectedIndex === i ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.2)'}
 								rx='4'
+								onPress={() => handleSelect(i)}
 							/>
 						)
 					})}
@@ -192,7 +241,15 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 					<>
 						<Path d={createPath(bodyFats, getYBodyFat)} fill='none' stroke='#ffd166' strokeWidth='3' strokeLinecap='round' />
 						{bodyFats.map((val, i) => (
-							<Circle key={`bf-${i}`} cx={getX(i)} cy={getYBodyFat(val)} r='4' fill='#ffd166' stroke='#0096c7' strokeWidth='2' />
+							<Circle
+								key={`bf-${i}`}
+								cx={getX(i)}
+								cy={getYBodyFat(val)}
+								r={selectedIndex === i ? 6 : 4}
+								fill='#ffd166'
+								stroke='#0096c7'
+								strokeWidth='2'
+							/>
 						))}
 					</>
 				)}
@@ -202,10 +259,109 @@ export default function DualAxisChart({ records, showWeight, showBodyFat, showSt
 					<>
 						<Path d={createPath(weights, getYWeight)} fill='none' stroke='#ffffff' strokeWidth='3' strokeLinecap='round' />
 						{weights.map((val, i) => (
-							<Circle key={`w-${i}`} cx={getX(i)} cy={getYWeight(val)} r='4.5' fill='#ffffff' stroke='#0096c7' strokeWidth='2' />
+							<Circle
+								key={`w-${i}`}
+								cx={getX(i)}
+								cy={getYWeight(val)}
+								r={selectedIndex === i ? 6.5 : 4.5}
+								fill='#ffffff'
+								stroke='#0096c7'
+								strokeWidth='2'
+							/>
 						))}
 					</>
 				)}
+
+				{/* タップ判定領域を広げる透明Circle（UX向上） */}
+				{records.map((_, i) => {
+					const x = getX(i)
+					// 列ごとの幅を計算（データ数に応じて調整、最小20px～最大50px程度）
+					const columnWidth = Math.max(20, Math.min(50, chartWidth / Math.max(records.length, 1)))
+
+					return (
+						<Rect
+							key={`touch-${i}`}
+							x={x - columnWidth / 2}
+							y={paddingTop}
+							width={columnWidth}
+							height={chartHeight}
+							fill='transparent'
+							onPress={() => handleSelect(i)}
+						/>
+					)
+
+				})}
+
+				{/* 吹き出し（ツールチップ）の描画 */}
+				{selectedIndex !== null && selectedRecord && (() => {
+					const tooltipWidth = 120
+					const tooltipHeight = 40
+
+					// ボックスの左端のX座標を画面幅に応じて決定
+					let boxX = selectedX - tooltipWidth / 2 // デフォルト：中央
+					if (selectedIndex === 0) {
+						boxX = selectedX // 左端のデータの場合
+					} else if (selectedIndex === records.length - 1) {
+						boxX = selectedX - tooltipWidth // 右端のデータの場合
+					}
+
+					return (
+						<G>
+							{/* 吹き出しの背景ボックス */}
+							<Rect
+								x={boxX}
+								y={paddingTop - 15}
+								width={tooltipWidth}
+								height={tooltipHeight}
+								rx='6'
+								fill='#1c2541'
+								stroke='#4cc9f0'
+								strokeWidth='1'
+							/>
+
+							{/* 吹き出しのテキスト：体重（左側に配置） */}
+							{showWeight && (
+								<SvgText
+									x={boxX + 15}
+									y={paddingTop + 3}
+									fill='#ffd166'
+									fontSize='10'
+									fontWeight='bold'
+									textAnchor='start'
+								>
+									{`${selectedRecord.weight.toFixed(1)}kg`}
+							</SvgText>
+							)}
+
+							{/* 吹き出しのテキスト：体脂肪率（右側に配置） */}
+							{showBodyFat && (
+								<SvgText
+									x={boxX + 70}
+									y={paddingTop + 3}
+									fill='#ffffff'
+									fontSize='10'
+									fontWeight='bold'
+									textAnchor='start'
+								>
+									{`${selectedRecord.body_fat.toFixed(1)}%`}
+								</SvgText>
+							)}
+							
+							{/* 吹き出しのテキスト：歩数（2行目に中央揃えで配置） */}
+							{showSteps && (
+								<SvgText
+									x={boxX + tooltipWidth / 2}
+									y={paddingTop + 18}
+									fill='#8d99ae'
+									fontSize='9'
+									textAnchor='middle'
+								>
+									{`${selectedRecord.steps.toLocaleString()} 歩`}
+								</SvgText>
+							)}
+						</G>
+					)
+				})()}
 			</Svg>
 		</View>
 	)
@@ -217,7 +373,7 @@ interface PieChartProps {
 	bodyFatPercentage: number
 }
 
-export function BodyCompositionPieChart({ weight, bodyFatPercentage }:PieChartProps) {
+export function BodyCompositionPieChart({ weight, bodyFatPercentage }: PieChartProps) {
 	if (!weight || weight <= 0) {
 		return (
 			<View style={styles.pieEmpty}>
@@ -252,7 +408,7 @@ export function BodyCompositionPieChart({ weight, bodyFatPercentage }:PieChartPr
 	return (
 
 		<View style={styles.pieContainer}>
-			
+
 			<Svg width={size} height={size}>
 				<G transform={`rotate(-90 ${center} ${center})`}>
 					{slices.map((slice, i) => {
