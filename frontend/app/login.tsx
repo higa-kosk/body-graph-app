@@ -1,14 +1,10 @@
 import React, { useState } from 'react'
-import { StyleSheet, Text, View, TouchableOpacity, Alert, Platform, Modal, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Alert, Modal, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import * as WebBrowser from 'expo-web-browser'
 import * as Google from 'expo-auth-session/providers/google'
 import apiClient from '@/services/api'
 import { saveToken } from '@/services/auth'
-
-// WebBrowserセッションの完了をハンドリング
-WebBrowser.maybeCompleteAuthSession()
 
 export default function LoginScreen() {
 	const router = useRouter()
@@ -22,6 +18,7 @@ export default function LoginScreen() {
 		webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
 		iosClientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID,
 		// androidClientId: ...,
+		responseType: 'id_token',
 	})
 
 	// Googleログインボタンが押された時
@@ -33,7 +30,7 @@ export default function LoginScreen() {
 			if (result.type === 'success') {
 				// 認証成功時、レスポンスからidTokenまたは認証コードを取得
 				// ※expo-auth-sessionの設定によってはauthentication?.idTokenが取得できる
-				const idToken = result.authentication?.idToken
+				const idToken = result.authentication?.idToken || result.params?.id_token
 
 				if (!idToken) {
 					throw new Error('ID Token not found from Google response')
@@ -43,7 +40,7 @@ export default function LoginScreen() {
 				// ここではバックエンド側でverifyGoogleTokenがidTokenを検証する設計とする
 				const googlePayload = {
 					provider: 'google',
-					provicer_id: '', // バックエンド側でidTokenから検証・抽出する為空で良い
+					provider_id: '', // バックエンド側でidTokenから検証・抽出する為空で良い
 					email: '', // 同上
 					name: 'Googleユーザー',
 					id_token: idToken,
@@ -52,7 +49,7 @@ export default function LoginScreen() {
 				const apiResponse = await apiClient.post('/auth/login', googlePayload)
 				const data = apiResponse.data
 
-				if (data.success === 'needs_registration') {
+				if (data.status === 'needs_registration') {
 					setPendingUserData(googlePayload)
 					setModalVisible(true)
 				} else {
@@ -71,15 +68,15 @@ export default function LoginScreen() {
 	}
 
 	// ログイン（存在確認）の実行
-	const handleSocialLoginMock = async (provider: 'apple' | 'google') => {
+	const handleAppleLoginMock = async () => {
 		try {
 			setLoading(true)
 			// モック用のペイロード（後々本番SDKを導入する際は、ここに取得した情報を渡す）
 			const mockPayload = {
-				provider,
-				provider_id: provider === 'apple' ? 'mock_apple_user_999999' : 'mock_google_user_888888',
-				email: provider === 'apple' ? 'apple.user@example.com' : 'google.user@example.com',
-				name: provider === 'apple' ? 'Appleユーザー' : 'Googleユーザー',
+				provider: 'apple',
+				provider_id: `mock_apple_user_${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`,
+				email: 'apple.user@example.com',
+				name: 'Appleモックユーザー',
 			}
 
 			// バックエンドの/auth/loginにリクエスト
@@ -96,7 +93,7 @@ export default function LoginScreen() {
 				router.replace('/(tabs)')
 			}
 		} catch (error: any) {
-			console.error('Login error:', error)
+			console.error('Apple(Mock) Login error:', error)
 			Alert.alert('ログイン失敗', '認証に失敗しました。時間をおいて再度お試しください。')
 		} finally {
 			setLoading(false)
@@ -142,7 +139,7 @@ export default function LoginScreen() {
 				{/* Appleログインボタン（モック） */}
 				<TouchableOpacity
 					style={styles.appleButton}
-					onPress={() => handleSocialLoginMock('apple')}
+					onPress={handleAppleLoginMock}
 					disabled={loading}
 				>
 					<Text style={styles.appleButtonText}>Appleでサインイン（モック）</Text>

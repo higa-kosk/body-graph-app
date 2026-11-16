@@ -21,8 +21,8 @@ func generateMockToken(userID uint) string {
 // ソーシャルログインの存在確認・ログイン処理
 func SocialLogin(c *gin.Context) {
 	var input struct {
-		Provider   string `json:"provider" binding:"required"`    // "apple" or "google"
-		ProviderID string `json:"provider_id" binding:"required"` // プロバイダ固有のID
+		Provider   string `json:"provider" binding:"required"` // "apple" or "google"
+		ProviderID string `json:"provider_id"`                 // プロバイダ固有のID
 		Email      string `json:"email"`
 		Name       string `json:"name"`
 		IDToken    string `json:"id_token"` // フロントからid_tokenを受け取るフィールドを追加
@@ -33,7 +33,7 @@ func SocialLogin(c *gin.Context) {
 		return
 	}
 
-	// Googleログインの場合、バックエンドでIDトークンを検証する
+	// Googleログインの場合、バックエンドでIDトークンを検証してProviderIDとEmailを確定させる
 	if input.Provider == "google" && input.IDToken != "" {
 		sub, verifiedEmail, err := verifyGoogleToken(c.Request.Context(), input.IDToken)
 		if err != nil {
@@ -45,6 +45,12 @@ func SocialLogin(c *gin.Context) {
 		if verifiedEmail != "" {
 			input.Email = verifiedEmail
 		}
+	}
+
+	// 最低限のデータが揃っているか確認
+	if input.ProviderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider_id is required"})
+		return
 	}
 
 	var user models.User
@@ -72,8 +78,8 @@ func SocialLogin(c *gin.Context) {
 func RegisterUser(c *gin.Context) {
 	var input struct {
 		Provider   string `json:"provider" binding:"required"`
-		ProviderID string `json:"provider_id" binding:"required"`
-		Email      string `json:"email" binding:"required"`
+		ProviderID string `json:"provider_id"`
+		Email      string `json:"email"`
 		Name       string `json:"name"`
 		IDToken    string `json:"id_token"` // フロントからid_tokenを受け取るフィールドを追加
 	}
@@ -81,6 +87,26 @@ func RegisterUser(c *gin.Context) {
 	if err := c.ShouldBindJSON(&input); err != nil {
 		fmt.Printf("❌ Bind error details: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Googleログインの場合、バックエンドでIDトークンを検証してProviderIDとEmailを確定させる
+	if input.Provider == "google" && input.IDToken != "" {
+		sub, verifiedEmail, err := verifyGoogleToken(c.Request.Context(), input.IDToken)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid google id token"})
+			return
+		}
+		// 改ざんを防ぐ為、検証済みのsub（Googleのユーザー一意ID）とメールアドレスを使用
+		input.ProviderID = sub
+		if verifiedEmail != "" {
+			input.Email = verifiedEmail
+		}
+	}
+
+	// 最低限のデータが揃っているか確認
+	if input.ProviderID == "" || input.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider_id and email are required"})
 		return
 	}
 

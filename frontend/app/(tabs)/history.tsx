@@ -59,6 +59,7 @@ export default function HistoryScreen() {
 
 				<FlatList
 					data={records}
+					style={{ flex: 1 }}
 					keyExtractor={(item, index) => item?.id ? item.id.toString() : index.toString()}
 					renderItem={({ item }) => (
 						<View style={styles.card}>
@@ -113,7 +114,8 @@ const styles = StyleSheet.create({
 	container: {
 		padding: 16,
 		paddingBottom: 0,
-		flexGrow: 1,
+		flex: 1,
+		height: '100%',
 		backgroundColor: '#0b132b',
 	},
 	appTitle: { fontSize: 32, fontWeight: '900', color: '#48cae4', textAlign: 'center', marginVertical: 16, letterSpacing: 1 },

@@ -2,11 +2,19 @@ import axios from "axios"
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
 const VIP_KEY = process.env.EXPO_PUBLIC_VIP_KEY || ''
 
+// 環境やプラットフォームに応じてbaseURLを動的に切り替える
+const getBaseURL = () => {
+	if (Platform.OS === 'web') {
+		return 'http://localhost:8080/api/v1'
+	} else {
+		return process.env.EXPO_PUBLIC_API_URL
+	}
+}
+
 const apiClient = axios.create({
-	baseURL: API_BASE_URL,
+	baseURL: getBaseURL(),
 	timeout: 10000,
 	headers: {
 		'Content-Type': 'application/json',
