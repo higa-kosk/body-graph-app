@@ -19,6 +19,9 @@ export default function LoginScreen() {
 		iosClientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID,
 		// androidClientId: ...,
 		responseType: 'id_token',
+		extraParams: {
+			prompt: 'select_account',
+		}
 	})
 
 	// Googleログインボタンが押された時
@@ -169,7 +172,10 @@ export default function LoginScreen() {
 						<View style={styles.modalButtons}>
 							<TouchableOpacity
 								style={[styles.modalBtn, styles.cancelBtn]}
-								onPress={() => setModalVisible(false)}
+								onPress={() => {
+									setModalVisible(false)
+									setPendingUserData(null) // キャンセル時にクリア
+								}}
 								disabled={loading}
 							>
 								<Text style={styles.cancelBtnText}>キャンセル</Text>
