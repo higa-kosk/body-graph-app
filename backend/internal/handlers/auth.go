@@ -7,16 +7,12 @@ import (
 	"os"
 
 	"body-graph/backend/internal/database"
+	"body-graph/backend/internal/middleware"
 	"body-graph/backend/internal/models"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 )
-
-// モック用の簡易JWT生成関数
-func generateMockToken(userID uint) string {
-	return "mock-jwt-token-for-user-id-"
-}
 
 // ソーシャルログインの存在確認・ログイン処理
 func SocialLogin(c *gin.Context) {
@@ -67,7 +63,12 @@ func SocialLogin(c *gin.Context) {
 	}
 
 	// 【既存ユーザーの場合】：ログイン成功（JWTを返却）
-	token := generateMockToken(user.ID)
+	token, err := middleware.GenerateToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "logged_in",
 		"token":  token,
@@ -131,7 +132,12 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	// 登録完了後にJWTを発行してログイン状態にする
-	token := generateMockToken(newUser.ID)
+	token, err := middleware.GenerateToken(newUser.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"status": "registered_and_logged_in",
 		"token":  token,

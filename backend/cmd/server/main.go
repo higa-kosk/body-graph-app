@@ -56,8 +56,8 @@ func main() {
 		// セキュアグループ
 		secureGroup := api.Group("/")
 		secureGroup.Use(middleware.VIPKeyMiddleware())
-		//secureGroup.Use(middleware.AuthMiddleware())
-		secureGroup.Use(TempAuthMiddleware()) // 本物のAuthMiddlewareの代わりにこれを挟む
+		secureGroup.Use(middleware.AuthMiddleware())
+		//secureGroup.Use(TempAuthMiddleware()) // 本物のAuthMiddlewareの代わりにこれを挟む
 		{
 			secureGroup.POST("/records", handlers.CreateRecord)
 			secureGroup.GET("/records", handlers.GetRecords)

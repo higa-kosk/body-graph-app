@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -55,18 +57,29 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		// userIDをコンテキストにセット
-		c.Set("userID", claims.UserID)
+		c.Set("user_id", claims.UserID)
 		c.Next()
 	}
 }
 
 // GenerateToken JWTトークンを生成するヘルパー関数
 func GenerateToken(userID uint) (string, error) {
+	// 環境変数からシークレットキーを取得（設定されていない場合のフォールバックやエラーハンドリングも考慮）
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		// JWT_SECRETが空の場合はエラーを返す
+		return "", errors.New("JWT_SECRET is not set")
+	}
+
+	now := time.Now()
 	claims := &Claims{
-		UserID:           userID,
-		RegisteredClaims: jwt.RegisteredClaims{},
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(7 * 24 * time.Hour)),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret())
+	return token.SignedString([]byte(secret))
 }
