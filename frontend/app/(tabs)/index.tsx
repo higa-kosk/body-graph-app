@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native'
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native'
 import apiClient from '@/services/api'
 import DualAxisChart, { BodyCompositionPieChart } from '@/components/DualAxisChart'
 import { AxiosError } from 'axios'
 
 export default function HomeScreen() {
 	const [records, setRecords] = useState<any[]>([])
+	const [isInitialLoading, setIsInitialLoading] = useState(true)
 	const [weight, setWeight] = useState('')
 	const [bodyFat, setBodyFat] = useState('')
 	const [steps, setSteps] = useState('')
@@ -40,6 +41,8 @@ export default function HomeScreen() {
 				console.log('【Server Data】:', aError.response.data)
 			}
 			console.error('Failed to fetch records', error)
+		} finally {
+			setIsInitialLoading(false)
 		}
 	}
 
@@ -86,6 +89,15 @@ export default function HomeScreen() {
 	const avgWeight = weights.length > 0 ? (weights.reduce((a, b) => a + b, 0) / weights.length).toFixed(1) : '-'
 	const latestRecord = records.length > 0 ? records[records.length - 1] : { weight: 0, body_fat: 0 }
 
+	if (isInitialLoading) {
+		return (
+			<View style={[styles.container, styles.loginScreen]}>
+				<ActivityIndicator size='large' color='#48cae4' />
+				<Text style={styles.loadingScreenText}>データを読み込み中...</Text>
+			</View>
+		)
+	}
+	
 	return (
 
 		<ScrollView contentContainerStyle={styles.container}>
@@ -218,4 +230,17 @@ const styles = StyleSheet.create({
 	input: { borderWidth: 1.5, borderColor: '#e0e0e0', borderRadius: 14, padding: 12, marginBottom: 12, fontSize: 15, backgroundColor: '#fcfcfc', color: '#333' },
 	saveButton: { backgroundColor: '#48cae4', padding: 14, borderRadius: 14, alignItems: 'center', shadowColor: '#48cae4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 3 },
 	saveButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+	loginScreen: {
+		...StyleSheet.absoluteFill,
+		backgroundColor: '#0b132b',
+		justifyContent: 'center',
+		alignItems: 'center',
+		zIndex: 999,
+	},
+	loadingScreenText: {
+		marginTop: 14,
+		color: '#e0fbfc',
+		fontSize: 14,
+		fontWeight: '600',
+	},
 })

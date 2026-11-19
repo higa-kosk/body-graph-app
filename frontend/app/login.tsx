@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { StyleSheet, Text, View, TouchableOpacity, Alert, Modal, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, Alert, Modal, ActivityIndicator, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import * as Google from 'expo-auth-session/providers/google'
@@ -9,12 +9,13 @@ import { saveToken } from '@/services/auth'
 export default function LoginScreen() {
 	const router = useRouter()
 	const [loading, setLoading] = useState(false)
+	const [isNavigating, setIsNavigating] = useState(false)
 	const [modalVisible, setModalVisible] = useState(false)
 	const [pendingUserData, setPendingUserData] = useState<any>(null)
 
 	// Google認証フックの設定
 	// ※clientIdにはGoogle Cloud Consoleで作成したWeb用、または各プラットフォーム用のクライアントIDを指定する
-	const [request, response, promptAsync] = Google.useAuthRequest({
+	const [request, , promptAsync] = Google.useAuthRequest({
 		webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
 		iosClientId: process.env.EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID,
 		// androidClientId: ...,
@@ -24,8 +25,23 @@ export default function LoginScreen() {
 		}
 	})
 
+	// トークン後損五、ポップアップのクローズ完了を待ってからメインタブへ遷移
+	const navigateToMainTab = async (token: string) => {
+		setIsNavigating(true)
+		await saveToken(token)
+		setModalVisible(false)
+
+		if (Platform.OS === 'web') {
+			await new Promise((resolve) => setTimeout(resolve, 250))
+		}
+
+		router.replace('/(tabs)')
+	}
+
 	// Googleログインボタンが押された時
 	const handleGoogleLoginPress = async () => {
+		if (loading || isNavigating) return
+
 		try {
 			setLoading(true)
 			const result = await promptAsync()
@@ -55,29 +71,34 @@ export default function LoginScreen() {
 				if (data.status === 'needs_registration') {
 					setPendingUserData(googlePayload)
 					setModalVisible(true)
+					setLoading(false)
 				} else {
-					await saveToken(data.token)
-					router.replace('/(tabs)')
+					await navigateToMainTab(data.token)
 				}
 			} else {
 				console.log('Google Sing-In canceled or dismissed')
+				setLoading(false)
 			}
 		} catch (error: any) {
 			console.error('Google Login error:', error)
 			Alert.alert('ログイン失敗', 'Googleログインに失敗しました。')
-		} finally {
 			setLoading(false)
+			setIsNavigating(false)
 		}
 	}
 
 	// ログイン（存在確認）の実行
 	const handleAppleLoginMock = async () => {
+		if (loading || isNavigating) return
+
 		try {
 			setLoading(true)
 			// モック用のペイロード（後々本番SDKを導入する際は、ここに取得した情報を渡す）
 			const mockPayload = {
 				provider: 'apple',
-				provider_id: `mock_apple_user_${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`,
+				provider_id: `mock_apple_user_${Math.floor(Math.random() * 1000000)
+					.toString()
+					.padStart(6, '0')}`,
 				email: 'apple.user@example.com',
 				name: 'Appleモックユーザー',
 			}
@@ -90,22 +111,22 @@ export default function LoginScreen() {
 				// 未登録の場合：勝手に作らず、データを保持して確認モーダルを表示
 				setPendingUserData(mockPayload)
 				setModalVisible(true)
+				setLoading(false)
 			} else {
 				// 既存ユーザーの場合：JWTを保存してホームへ遷移
-				await saveToken(data.token)
-				router.replace('/(tabs)')
+				await navigateToMainTab(data.token)
 			}
 		} catch (error: any) {
 			console.error('Apple(Mock) Login error:', error)
 			Alert.alert('ログイン失敗', '認証に失敗しました。時間をおいて再度お試しください。')
-		} finally {
 			setLoading(false)
+			setIsNavigating(false)
 		}
 	}
 
 	// モーダルで「登録する」が選択された時の新規登録実行
 	const handleConfirmRegister = async () => {
-		if (!pendingUserData) return
+		if (!pendingUserData || loading || isNavigating) return
 
 		try {
 			setLoading(true)
@@ -113,16 +134,16 @@ export default function LoginScreen() {
 			const data = response.data
 
 			if (data.token) {
-				await saveToken(data.token)
-				setModalVisible(false)
-				router.replace('/(tabs)')
+				await navigateToMainTab(data.token)
 			}
 		} catch (error: any) {
 			Alert.alert('エラー', '新規登録処理に失敗しました')
-		} finally {
 			setLoading(false)
+			setIsNavigating(false)
 		}
 	}
+
+	const showOverlay = loading || isNavigating
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -132,35 +153,34 @@ export default function LoginScreen() {
 
 				{/* Googleログインボタン */}
 				<TouchableOpacity
-					style={[styles.googleButton, !request && styles.disabledButton]}
+					style={[styles.googleButton, (!request || showOverlay) && styles.disabledButton]}
 					onPress={() => handleGoogleLoginPress()}
-					disabled={!request || loading}
+					disabled={!request || showOverlay}
 				>
 					<Text style={styles.buttonText}>Googleでログイン</Text>
 				</TouchableOpacity>
 				
 				{/* Appleログインボタン（モック） */}
 				<TouchableOpacity
-					style={styles.appleButton}
+					style={[styles.appleButton, showOverlay && styles.disabledButton]}
 					onPress={handleAppleLoginMock}
-					disabled={loading}
+					disabled={showOverlay}
 				>
 					<Text style={styles.appleButtonText}>Appleでサインイン（モック）</Text>
 				</TouchableOpacity>
 
-				{loading && (
-					<View style={styles.loadingContainer}>
-						<ActivityIndicator size='small' color='#4cc9f0' />
+				{showOverlay && (
+					<View style={styles.fullScreenOverlay} pointerEvents='auto'>
+						<ActivityIndicator size='large' color='#4cc9f0' />
+						<Text style={styles.overlayText}>
+							{isNavigating ? 'ホーム画面へ移動中...' : '認証処理中...'}
+						</Text>
 					</View>
 				)}
 			</View>
 
 			{/* 新規登録の意思を確認するカスタムモーダル */}
-			<Modal
-				visible={modalVisible}
-				transparent={true}
-				animationType='fade'
-			>
+			<Modal visible={modalVisible} transparent={true} animationType='fade'>
 				<View style={styles.modalOverlay}>
 					<View style={styles.modalCard}>
 						<Text style={styles.modalTitle}>新規登録の確認</Text>
@@ -176,7 +196,7 @@ export default function LoginScreen() {
 									setModalVisible(false)
 									setPendingUserData(null) // キャンセル時にクリア
 								}}
-								disabled={loading}
+								disabled={showOverlay}
 							>
 								<Text style={styles.cancelBtnText}>キャンセル</Text>
 							</TouchableOpacity>
@@ -184,7 +204,7 @@ export default function LoginScreen() {
 							<TouchableOpacity
 								style={[styles.modalBtn, styles.registerBtn]}
 								onPress={handleConfirmRegister}
-								disabled={loading}
+								disabled={showOverlay}
 							>
 								<Text style={styles.registerBtnText}>登録する</Text>
 							</TouchableOpacity>
@@ -318,5 +338,18 @@ const styles = StyleSheet.create({
 	registerBtnText: {
 		color: '#0b132b',
 		fontWeight: '900',
+	},
+	fullScreenOverlay: {
+		...StyleSheet.absoluteFill,
+		backgroundColor: '#0b132b',
+		justifyContent: 'center',
+		alignItems: 'center',
+		zIndex: 999,
+	},
+	overlayText: {
+		marginTop: 14,
+		color: '#e0fbfc',
+		fontSize: 14,
+		fontWeight: '600',
 	},
 })
